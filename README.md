@@ -120,6 +120,76 @@ Notice
 
 For the imagereplacer to work, the image tag: `{%image}` needs to be in its own `<w:p>`, so that means that you have to put a new line after and before the tag.
 
+Loading images in the browser
+=======================
+
+You can also use the library in the browser. To do that, the biggest difficulty is to load the image. The format that docxtemplater accepts is a binary string. 
+
+The string looks like this : 
+"PNG                                                                                                   IHDRô+"
+
+you can generate it from node js with fs.readFileSync(buffer,'base64');
+
+the image module and docxtemplater is a fully synchronous image, so you will have to load the images before running any docxtemplater code.
+
+```
+convertToDocX();
+var templateName = 'template_simple';
+var myimg;
+
+function loadFile(url, callback) {
+  JSZipUtils.getBinaryContent(url, callback);
+}
+
+function convertToDocX() {
+  loadFile("/wp-content/themes/dots/img/placeholder.png", function (error, content) {
+    myimg = content;
+    documentConverter.init();
+  });
+}
+var documentConverter = {
+  init: function () {
+    documentConverter.injectData();
+  },
+  getTotalPrice: function () {
+    return jQuery('.payment.cff-calculated-field .codepeoplecalculatedfield').attr('value');
+  },
+  injectData: function () {
+    var totalPrice = documentConverter.getTotalPrice();
+    var genericContent = docXcontent;
+    //add selected solutions to content
+    addSelectedSolutions(genericContent);
+    //add totalPrice to content
+    genericContent.totalPrice = totalPrice;
+    console.log(genericContent);
+    var opts = {};
+    opts.centered = false;
+    opts.getImage = function (tagValue, tagName) {
+      return myimg;
+    };
+    opts.getSize = function (img, tagValue, tagName) {
+      return [200, 200];
+    };
+    genericContent.image = '/wp-content/themes/dots/img/placeholder.png';
+    var imageModule = new window.ImageModule(opts);
+    loadFile("/wp-content/themes/dots/js/docxtemplater/" + templateName + ".docx", function (err, content) {
+      if (err) {
+        throw err
+      }
+      var zip = new JSZip(content);
+      var doc = new Docxtemplater().loadZip(zip);
+      doc.attachModule(imageModule);
+      doc.setData(genericContent);
+      doc.render();
+      var out = doc.getZip().generate({
+        type: "blob"
+        // mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+      saveAs(out, "offerte.docx");
+    });
+  }
+};
+
 Testing
 =======
 
